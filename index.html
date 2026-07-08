@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prism 刷题视口 4.0 (断点续传版)</title>
+    <title>2026 金点题</title>
     
     <script src="questions.js"></script>
     
@@ -18,7 +18,6 @@
         .global-label { font-size: 12px; color: #888; font-weight: normal; }
         .global-value { font-size: 16px; color: #333; }
         .global-value.highlight { color: #82C99D; font-size: 18px;}
-
         .chapter-card { background: #EBEBE8; border-radius: 8px; padding: 16px; margin-bottom: 15px; display: flex; flex-direction: column; }
         .chapter-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #333; }
         .chapter-stats { font-size: 13px; color: #666; margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; }
@@ -30,7 +29,6 @@
         .btn-action:hover { opacity: 0.8; }
         .btn-brush { background: #D9D8D3; color: #333; }
         .btn-error { background: #D68787; color: #FFF; }
-
         .question-title { font-size: 16px; line-height: 1.6; margin-bottom: 20px; font-weight: 600; }
         .option { padding: 14px 18px; margin: 10px 0; background: #EBEBE8; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; font-size: 15px; box-sizing: border-box; border: 2px solid transparent;}
         .option.disabled { cursor: not-allowed; pointer-events: none; }
@@ -39,7 +37,6 @@
         .selected-option { background: #D9D8D3; border: 2px solid #82C99D; }
         .wrong-answer { background: transparent !important; color: #D68787 !important; font-weight: bold; border-color: #D68787 !important;}
         .correct-answer { background: #82C99D !important; color: #FFF !important; font-weight: bold; border-color: #82C99D !important;}
-
         .explanation-layer { margin-top: 20px; padding: 16px; background: #EBEBE8; border-left: 4px solid #ccc; border-radius: 4px 8px 8px 4px; font-size: 14px; display: none; animation: fadeIn 0.4s ease; line-height: 1.6;}
         .nav-buttons { display: flex; gap: 15px; margin-top: 20px; }
         .btn { flex: 1; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; display: none; transition: opacity 0.3s;}
@@ -47,16 +44,17 @@
         .btn-prev { background: #D9D8D3; color: #4A4A4A; }
         .btn-next { background: #82C99D; color: #FFF; }
         .btn-submit { background: #4A4A4A; color: #FFF; width: 100%; margin-top: 20px; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; display: none; transition: opacity 0.3s;}
+        .btn-skip { background: #D9D8D3; color: #4A4A4A; width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; display: none; transition: opacity 0.3s;}
+        .btn-skip:hover { opacity: 0.8; }
         .btn-restart { background: #82C99D; color: #FFF; display: none; width: 100%; margin-top: 20px; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: opacity 0.3s;}
         .btn-home { background: transparent; border: 1px solid #D9D8D3; color: #666; display: block; width: 100%; margin-top: 20px; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.3s;}
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div id="dashboard-view" class="card">
-        <div class="header-title"><span>Knowledge Panorama</span></div>
+        <div class="header-title"><span>2026 管理 金点题</span></div>
         
         <div class="global-stats-panel">
             <div class="global-item"><span class="global-label">总题数</span><span id="g-total" class="global-value">0</span></div>
@@ -64,10 +62,8 @@
             <div class="global-item"><span class="global-label">未答</span><span id="g-unanswered" class="global-value">0</span></div>
             <div class="global-item"><span class="global-label">总正确率</span><span id="g-accuracy" class="global-value highlight">0.0%</span></div>
         </div>
-
         <div id="chapter-list"></div>
     </div>
-
     <div id="quiz-view" class="card" style="display: none;">
         <div class="header-title">
             <span id="quiz-header-title">Data Structuring</span>
@@ -78,6 +74,7 @@
         <div id="question-text" class="question-title">加载中...</div>
         <div id="options-container"></div>
         <button id="submit-btn" class="btn-submit" onclick="submitMultiChoice()">确认提交</button>
+        <button id="skip-btn" class="btn-skip" onclick="skipQuestion()">暂时跳过</button>
         <div id="explanation-box" class="explanation-layer"></div>
         <div class="nav-buttons">
             <button id="prev-btn" class="btn btn-prev" onclick="goPrev()">回顾上一题</button>
@@ -87,7 +84,6 @@
         <button class="btn-home" onclick="goHome()">返回全景图</button>
     </div>
 </div>
-
 <script>
     let userHistory = JSON.parse(localStorage.getItem('prismUserHistory')) || {};
     let sessionAnswers = {}; 
@@ -96,7 +92,6 @@
     let currentMultiSelections = []; 
     let activeChapter = "";
     let activeIsErrorMode = false;
-
     // 数据兼容升级
     for (let id in userHistory) {
         if (userHistory[id].consecutiveCorrect === undefined) {
@@ -105,22 +100,18 @@
             userHistory[id].totalError = userHistory[id].errorCount || 0;
         }
     }
-
     function renderDashboard() {
         document.getElementById('dashboard-view').style.display = 'block';
         document.getElementById('quiz-view').style.display = 'none';
         
         const chapterListDiv = document.getElementById('chapter-list');
         chapterListDiv.innerHTML = '';
-
         if (typeof allQuestions === 'undefined' || allQuestions.length === 0) {
             chapterListDiv.innerHTML = '<div style="text-align:center; padding: 30px; color: #888; font-size: 14px;">题库尚未加载，请确保 questions.js 文件已配置正确。</div>';
             return;
         }
-
         let globalTotal = 0, globalAnswered = 0, globalCorrectAttempts = 0, globalTotalAttempts = 0;
         const chapters = {};
-
         allQuestions.forEach(q => {
             if(!chapters[q.chapter]) chapters[q.chapter] = { total: 0, answered: 0, correctAttempts: 0, totalAttempts: 0, errors: 0 };
             chapters[q.chapter].total++;
@@ -136,18 +127,15 @@
                 
                 globalCorrectAttempts += h.totalCorrect;
                 globalTotalAttempts += (h.totalCorrect + h.totalError);
-
                 if (h.totalError > 0 && h.consecutiveCorrect < 3) {
                     chapters[q.chapter].errors++;
                 }
             }
         });
-
         document.getElementById('g-total').innerText = globalTotal;
         document.getElementById('g-answered').innerText = globalAnswered;
         document.getElementById('g-unanswered').innerText = globalTotal - globalAnswered;
         document.getElementById('g-accuracy').innerText = globalTotalAttempts === 0 ? "0.0%" : ((globalCorrectAttempts / globalTotalAttempts) * 100).toFixed(1) + "%";
-
         for (const [chapName, data] of Object.entries(chapters)) {
             const acc = data.totalAttempts === 0 ? "0.0" : ((data.correctAttempts / data.totalAttempts) * 100).toFixed(1);
             const unanswered = data.total - data.answered;
@@ -166,7 +154,6 @@
             if (data.errors > 0) {
                 actionButtonsHtml += `<button class="btn-action btn-error" onclick="startQuiz('${chapName}', true, false)">专攻错题</button>`;
             }
-
             const card = document.createElement('div');
             card.className = 'chapter-card';
             card.innerHTML = `
@@ -184,7 +171,6 @@
             chapterListDiv.appendChild(card);
         }
     }
-
     // 新增 isResume 参数，用来判断是否开启断点续传
     function startQuiz(chapterName, isErrorMode, isResume = false) {
         activeChapter = chapterName; activeIsErrorMode = isErrorMode; sessionAnswers = {}; 
@@ -202,12 +188,9 @@
         } else {
             currentQIndex = 0; 
         }
-
         renderQuestion();
     }
-
     function restartQuiz() { startQuiz(activeChapter, activeIsErrorMode, false); }
-
     function updateStats() {
         document.getElementById('progress-text').innerText = `${currentQIndex + 1}/${currentQuizList.length}`;
         
@@ -222,7 +205,6 @@
         const acc = cTotal === 0 ? "0.0" : ((cCorrect / cTotal) * 100).toFixed(1);
         document.getElementById('quiz-accuracy-text').innerText = `${acc}%`;
     }
-
     function saveResult(qId, isCorrect) {
         if (!userHistory[qId]) userHistory[qId] = { consecutiveCorrect: 0, totalCorrect: 0, totalError: 0 };
         
@@ -235,7 +217,6 @@
         }
         localStorage.setItem('prismUserHistory', JSON.stringify(userHistory));
     }
-
     function renderQuestion() {
         if(currentQuizList.length === 0) {
             alert("太棒了，该模式下已经没有题目啦！");
@@ -248,6 +229,7 @@
         const prevBtn = document.getElementById('prev-btn');
         const submitBtn = document.getElementById('submit-btn');
         const restartBtn = document.getElementById('restart-btn');
+        const skipBtn = document.getElementById('skip-btn');
         
         if(currentQIndex >= currentQuizList.length) {
             document.getElementById('question-text').innerText = "太棒了！本组题目已全部刷完。";
@@ -257,16 +239,15 @@
             expBox.style.display = "none";
             nextBtn.style.display = "none";
             submitBtn.style.display = "none";
+            skipBtn.style.display = "none";
             prevBtn.style.display = "none";
             
             restartBtn.innerText = activeIsErrorMode ? "重刷错题本" : "再刷一遍";
             restartBtn.style.display = "block";
             return;
         }
-
         updateStats();
         currentMultiSelections = []; 
-
         const q = currentQuizList[currentQIndex];
         const isMulti = q.type === "多选";
         document.getElementById('question-text').innerText = `[${isMulti ? '多选' : '单选'}] ${q.question}`;
@@ -277,11 +258,10 @@
         expBox.style.display = "none";
         nextBtn.style.display = "none";
         submitBtn.style.display = "none";
+        skipBtn.style.display = "none";
         restartBtn.style.display = "none";
         prevBtn.style.display = currentQIndex > 0 ? "block" : "none";
-
         const hasAnsweredInSession = sessionAnswers.hasOwnProperty(q.id);
-
         q.options.forEach((opt, index) => {
             const div = document.createElement('div');
             div.className = 'option';
@@ -295,15 +275,17 @@
             }
             optsContainer.appendChild(div);
         });
-
         if (hasAnsweredInSession) {
             showExplanation(q, sessionAnswers[q.id].isCorrect);
             nextBtn.style.display = "block";
-        } else if (isMulti) {
-            submitBtn.style.display = "block";
+            skipBtn.style.display = "none";
+        } else {
+            skipBtn.style.display = "block";
+            if (isMulti) {
+                submitBtn.style.display = "block";
+            }
         }
     }
-
     function handleOptionClick(selectedIndex, element, q, isMulti) {
         if (!isMulti) {
             processSingleChoice(selectedIndex, element, q);
@@ -318,10 +300,10 @@
             }
         }
     }
-
     function processSingleChoice(selectedIndex, element, q) {
         const allOptions = document.querySelectorAll('.option');
         allOptions.forEach(opt => opt.classList.add('disabled'));
+        document.getElementById('skip-btn').style.display = "none";
         
         const isCorrect = (selectedIndex === q.answer);
         
@@ -341,42 +323,34 @@
             document.getElementById('next-btn').style.display = "block";
         }
     }
-
     function submitMultiChoice() {
         if (currentMultiSelections.length === 0) return; 
-
         const q = currentQuizList[currentQIndex];
         const allOptions = document.querySelectorAll('.option');
         allOptions.forEach(opt => opt.classList.add('disabled'));
         document.getElementById('submit-btn').style.display = "none";
-
+        document.getElementById('skip-btn').style.display = "none";
         const sortedSelected = [...currentMultiSelections].sort((a,b)=>a-b);
         const sortedAnswer = [...q.answer].sort((a,b)=>a-b);
         const isCorrect = JSON.stringify(sortedSelected) === JSON.stringify(sortedAnswer);
-
         saveResult(q.id, isCorrect);
         sessionAnswers[q.id] = { selected: sortedSelected, isCorrect: isCorrect };
-
         allOptions.forEach((opt, index) => {
             opt.classList.remove('selected-option');
             const isSelected = sortedSelected.includes(index);
             const isRightAns = q.answer.includes(index);
-
             if (isSelected && isRightAns) opt.classList.add('correct-answer'); 
             else if (isSelected && !isRightAns) opt.classList.add('wrong-answer'); 
             else if (!isSelected && isRightAns) opt.classList.add('correct-answer'); 
         });
-
         showExplanation(q, isCorrect);
         updateStats();
-
         if (isCorrect) {
             setTimeout(() => { goNext(); }, 1200);
         } else {
             document.getElementById('next-btn').style.display = "block";
         }
     }
-
     function renderSessionOption(div, index, q) {
         const session = sessionAnswers[q.id];
         if (q.type === "多选") {
@@ -390,7 +364,6 @@
             if (index === session.selected && !session.isCorrect) div.classList.add('wrong-answer'); 
         }
     }
-
     function showExplanation(q, isCorrect) {
         const expBox = document.getElementById('explanation-box');
         const stats = userHistory[q.id] || { consecutiveCorrect: 0, totalCorrect: 0, totalError: 0 };
@@ -401,7 +374,6 @@
         } else {
             standardAnsText = q.options[q.answer];
         }
-
         const statsHtml = `
             <div style="margin-top: 15px; font-size: 13px; color: #888; border-top: 1px dashed #ccc; padding-top: 12px; display: flex; gap: 15px; align-items: center;">
                 <span style="color: ${stats.consecutiveCorrect >= 3 ? '#82C99D' : '#D68787'}; font-weight: bold;">
@@ -421,11 +393,15 @@
         }
         expBox.style.display = "block";
     }
-
+    function skipQuestion() {
+        if (currentQIndex < currentQuizList.length) {
+            currentQIndex++;
+            renderQuestion();
+        }
+    }
     function goNext() { if (currentQIndex < currentQuizList.length) { currentQIndex++; renderQuestion(); } }
     function goPrev() { if (currentQIndex > 0) { currentQIndex--; renderQuestion(); } }
     function goHome() { renderDashboard(); }
-
     window.onload = function() { renderDashboard(); };
 </script>
 </body>
