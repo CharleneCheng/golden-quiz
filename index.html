@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prism 刷题视口 3.0 (看板升级版)</title>
+    
+    <script src="questions.js"></script>
+    
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #E2E1DD; color: #4A4A4A; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { max-width: 650px; width: 100%; }
+        .card { background: #F5F5F3; border-radius: 12px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); margin-bottom: 24px; }
+        .header-title { font-size: 14px; letter-spacing: 1px; color: #888; margin-bottom: 20px; display: flex; justify-content: space-between; border-bottom: 1px solid #D9D8D3; padding-bottom: 10px; text-transform: uppercase; }
+        
+        /* 全局数据看板样式 */
+        .global-stats-panel { background: #EBEBE8; border-radius: 8px; padding: 18px; margin-bottom: 24px; display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; align-items: center; border-left: 5px solid #82C99D;}
+        .global-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .global-label { font-size: 12px; color: #888; font-weight: normal; }
+        .global-value { font-size: 16px; color: #333; }
+        .global-value.highlight { color: #82C99D; font-size: 18px;}
+
+        .chapter-card { background: #EBEBE8; border-radius: 8px; padding: 16px; margin-bottom: 15px; display: flex; flex-direction: column; }
+        .chapter-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #333; }
+        .chapter-stats { font-size: 13px; color: #666; margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; }
+        .stat-highlight { color: #82C99D; font-weight: bold; }
+        .stat-error { color: #D68787; font-weight: bold; }
+        
+        .action-buttons { display: flex; gap: 10px; }
+        .btn-action { flex: 1; padding: 10px; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        .btn-action:hover { opacity: 0.8; }
+        .btn-brush { background: #D9D8D3; color: #333; }
+        .btn-error { background: #D68787; color: #FFF; }
+
+        .question-title { font-size: 16px; line-height: 1.6; margin-bottom: 20px; font-weight: 600; }
+        .option { padding: 14px 18px; margin: 10px 0; background: #EBEBE8; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; font-size: 15px; box-sizing: border-box; border: 2px solid transparent;}
+        .option.disabled { cursor: not-allowed; pointer-events: none; }
+        .option:hover:not(.disabled) { background: #D9D8D3; }
+        
+        .selected-option { background: #D9D8D3; border: 2px solid #82C99D; }
+        .wrong-answer { background: transparent !important; color: #D68787 !important; font-weight: bold; border-color: #D68787 !important;}
+        .correct-answer { background: #82C99D !important; color: #FFF !important; font-weight: bold; border-color: #82C99D !important;}
+
+        .explanation-layer { margin-top: 20px; padding: 16px; background: #EBEBE8; border-left: 4px solid #ccc; border-radius: 4px 8px 8px 4px; font-size: 14px; display: none; animation: fadeIn 0.4s ease; line-height: 1.6;}
+        .nav-buttons { display: flex; gap: 15px; margin-top: 20px; }
+        .btn { flex: 1; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; display: none; transition: opacity 0.3s;}
+        .btn:hover { opacity: 0.8; }
+        .btn-prev { background: #D9D8D3; color: #4A4A4A; }
+        .btn-next { background: #82C99D; color: #FFF; }
+        .btn-submit { background: #4A4A4A; color: #FFF; width: 100%; margin-top: 20px; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; display: none; transition: opacity 0.3s;}
+        .btn-restart { background: #82C99D; color: #FFF; display: none; width: 100%; margin-top: 20px; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: opacity 0.3s;}
+        .btn-home { background: transparent; border: 1px solid #D9D8D3; color: #666; display: block; width: 100%; margin-top: 20px; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.3s;}
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="dashboard-view" class="card">
+        <div class="header-title"><span>Knowledge Panorama</span></div>
+        
+        <div class="global-stats-panel">
+            <div class="global-item"><span class="global-label">总题数</span><span id="g-total" class="global-value">0</span></div>
+            <div class="global-item"><span class="global-label">已答</span><span id="g-answered" class="global-value">0</span></div>
+            <div class="global-item"><span class="global-label">未答</span><span id="g-unanswered" class="global-value">0</span></div>
+            <div class="global-item"><span class="global-label">总正确率</span><span id="g-accuracy" class="global-value highlight">0.0%</span></div>
+        </div>
+
+        <div id="chapter-list"></div>
+    </div>
+
+    <div id="quiz-view" class="card" style="display: none;">
+        <div class="header-title">
+            <span id="quiz-header-title">Data Structuring</span>
+            <span class="status-highlight" style="color: #82C99D; font-weight: bold; font-size: 13px;">
+                进度: <span id="progress-text">0/0</span> | 正确率: <span id="quiz-accuracy-text">0.0%</span>
+            </span>
+        </div>
+        <div id="question-text" class="question-title">加载中...</div>
+        <div id="options-container"></div>
+        <button id="submit-btn" class="btn-submit" onclick="submitMultiChoice()">确认提交</button>
+        <div id="explanation-box" class="explanation-layer"></div>
+        <div class="nav-buttons">
+            <button id="prev-btn" class="btn btn-prev" onclick="goPrev()">回顾上一题</button>
+            <button id="next-btn" class="btn btn-next" onclick="goNext()">下一题</button>
+        </div>
+        <button id="restart-btn" class="btn-restart" onclick="restartQuiz()">再刷一遍</button>
+        <button class="btn-home" onclick="goHome()">返回全景图</button>
+    </div>
+</div>
+
+<script>
+    let userHistory = JSON.parse(localStorage.getItem('prismUserHistory')) || {};
+    let sessionAnswers = {}; 
+    let currentQuizList = [];
+    let currentQIndex = 0;
+    let currentMultiSelections = []; 
+    let activeChapter = "";
+    let activeIsErrorMode = false;
+
+    // 数据兼容升级
+    for (let id in userHistory) {
+        if (userHistory[id].consecutiveCorrect === undefined) {
+            userHistory[id].consecutiveCorrect = 0;
+            userHistory[id].totalCorrect = userHistory[id].correctCount || 0;
+            userHistory[id].totalError = userHistory[id].errorCount || 0;
+        }
+    }
+
+    function renderDashboard() {
+        document.getElementById('dashboard-view').style.display = 'block';
+        document.getElementById('quiz-view').style.display = 'none';
+        
+        const chapterListDiv = document.getElementById('chapter-list');
+        chapterListDiv.innerHTML = '';
+
+        if (typeof allQuestions === 'undefined' || allQuestions.length === 0) {
+            chapterListDiv.innerHTML = '<div style="text-align:center; padding: 30px; color: #888; font-size: 14px;">题库尚未加载，请确保 questions.js 文件已配置正确。</div>';
+            return;
+        }
+
+        let globalTotal = 0, globalAnswered = 0, globalCorrectAttempts = 0, globalTotalAttempts = 0;
+        const chapters = {};
+
+        allQuestions.forEach(q => {
+            if(!chapters[q.chapter]) chapters[q.chapter] = { total: 0, answered: 0, correctAttempts: 0, totalAttempts: 0, errors: 0 };
+            chapters[q.chapter].total++;
+            globalTotal++;
+            
+            const h = userHistory[q.id];
+            if (h && (h.totalCorrect > 0 || h.totalError > 0)) {
+                // 计算已答
+                chapters[q.chapter].answered++;
+                globalAnswered++;
+                
+                // 计算正确率所需的总作答次数
+                chapters[q.chapter].correctAttempts += h.totalCorrect;
+                chapters[q.chapter].totalAttempts += (h.totalCorrect + h.totalError);
+                
+                globalCorrectAttempts += h.totalCorrect;
+                globalTotalAttempts += (h.totalCorrect + h.totalError);
+
+                // 待净化错题：做错过且连续正确不足3次
+                if (h.totalError > 0 && h.consecutiveCorrect < 3) {
+                    chapters[q.chapter].errors++;
+                }
+            }
+        });
+
+        // 渲染大盘数据
+        document.getElementById('g-total').innerText = globalTotal;
+        document.getElementById('g-answered').innerText = globalAnswered;
+        document.getElementById('g-unanswered').innerText = globalTotal - globalAnswered;
+        document.getElementById('g-accuracy').innerText = globalTotalAttempts === 0 ? "0.0%" : ((globalCorrectAttempts / globalTotalAttempts) * 100).toFixed(1) + "%";
+
+        // 渲染各个章节卡片
+        for (const [chapName, data] of Object.entries(chapters)) {
+            const acc = data.totalAttempts === 0 ? "0.0" : ((data.correctAttempts / data.totalAttempts) * 100).toFixed(1);
+            const unanswered = data.total - data.answered;
+            
+            const card = document.createElement('div');
+            card.className = 'chapter-card';
+            card.innerHTML = `
+                <div class="chapter-header">${chapName}</div>
+                <div class="chapter-stats">
+                    <span>已答: ${data.answered}</span>
+                    <span>未答: ${unanswered}</span>
+                    <span class="stat-highlight">正确率: ${acc}%</span>
+                    <span class="stat-error">待净化: ${data.errors}题</span>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn-action btn-brush" onclick="startQuiz('${chapName}', false)">顺序刷题</button>
+                    ${data.errors > 0 ? `<button class="btn-action btn-error" onclick="startQuiz('${chapName}', true)">专攻错题</button>` : ''}
+                </div>
+            `;
+            chapterListDiv.appendChild(card);
+        }
+    }
+
+    function startQuiz(chapterName, isErrorMode) {
+        activeChapter = chapterName; activeIsErrorMode = isErrorMode; sessionAnswers = {}; 
+        document.getElementById('dashboard-view').style.display = 'none';
+        document.getElementById('quiz-view').style.display = 'block';
+        
+        currentQuizList = isErrorMode 
+            ? allQuestions.filter(q => q.chapter === chapterName && userHistory[q.id] && userHistory[q.id].totalError > 0 && userHistory[q.id].consecutiveCorrect < 3)
+            : allQuestions.filter(q => q.chapter === chapterName);
+            
+        currentQIndex = 0; renderQuestion();
+    }
+
+    function restartQuiz() { startQuiz(activeChapter, activeIsErrorMode); }
+
+    function updateStats() {
+        // 更新进度
+        document.getElementById('progress-text').innerText = `${currentQIndex + 1}/${currentQuizList.length}`;
+        
+        // 实时计算当前刷题列表的正确率
+        let cCorrect = 0, cTotal = 0;
+        currentQuizList.forEach(q => {
+            const h = userHistory[q.id];
+            if (h && (h.totalCorrect > 0 || h.totalError > 0)) {
+                cCorrect += h.totalCorrect;
+                cTotal += (h.totalCorrect + h.totalError);
+            }
+        });
+        const acc = cTotal === 0 ? "0.0" : ((cCorrect / cTotal) * 100).toFixed(1);
+        document.getElementById('quiz-accuracy-text').innerText = `${acc}%`;
+    }
+
+    function saveResult(qId, isCorrect) {
+        if (!userHistory[qId]) userHistory[qId] = { consecutiveCorrect: 0, totalCorrect: 0, totalError: 0 };
+        
+        if (isCorrect) {
+            userHistory[qId].consecutiveCorrect++;
+            userHistory[qId].totalCorrect++;
+        } else {
+            userHistory[qId].consecutiveCorrect = 0;
+            userHistory[qId].totalError++;
+        }
+        localStorage.setItem('prismUserHistory', JSON.stringify(userHistory));
+    }
+
+    function renderQuestion() {
+        if(currentQuizList.length === 0) {
+            alert("太棒了，该模式下已经没有题目啦！");
+            goHome();
+            return;
+        }
+        
+        const expBox = document.getElementById('explanation-box');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        if(currentQIndex >= currentQuizList.length) {
+            document.getElementById('question-text').innerText = "太棒了！本组题目已全部刷完。";
+            document.getElementById('options-container').innerHTML = "";
+            document.getElementById('progress-text').innerText = `完成`;
+            
+            expBox.style.display = "none";
+            nextBtn.style.display = "none";
+            submitBtn.style.display = "none";
+            prevBtn.style.display = "none";
+            
+            restartBtn.innerText = activeIsErrorMode ? "重刷错题本" : "再刷一遍";
+            restartBtn.style.display = "block";
+            return;
+        }
+
+        updateStats();
+        currentMultiSelections = []; 
+
+        const q = currentQuizList[currentQIndex];
+        const isMulti = q.type === "多选";
+        document.getElementById('question-text').innerText = `[${isMulti ? '多选' : '单选'}] ${q.question}`;
+        
+        const optsContainer = document.getElementById('options-container');
+        optsContainer.innerHTML = '';
+        
+        expBox.style.display = "none";
+        nextBtn.style.display = "none";
+        submitBtn.style.display = "none";
+        restartBtn.style.display = "none";
+        prevBtn.style.display = currentQIndex > 0 ? "block" : "none";
+
+        const hasAnsweredInSession = sessionAnswers.hasOwnProperty(q.id);
+
+        q.options.forEach((opt, index) => {
+            const div = document.createElement('div');
+            div.className = 'option';
+            div.innerText = opt;
+            
+            if (hasAnsweredInSession) {
+                div.classList.add('disabled');
+                renderSessionOption(div, index, q);
+            } else {
+                div.onclick = () => handleOptionClick(index, div, q, isMulti);
+            }
+            optsContainer.appendChild(div);
+        });
+
+        if (hasAnsweredInSession) {
+            showExplanation(q, sessionAnswers[q.id].isCorrect);
+            nextBtn.style.display = "block";
+        } else if (isMulti) {
+            submitBtn.style.display = "block";
+        }
+    }
+
+    function handleOptionClick(selectedIndex, element, q, isMulti) {
+        if (!isMulti) {
+            processSingleChoice(selectedIndex, element, q);
+        } else {
+            const idxInArray = currentMultiSelections.indexOf(selectedIndex);
+            if (idxInArray > -1) {
+                currentMultiSelections.splice(idxInArray, 1);
+                element.classList.remove('selected-option');
+            } else {
+                currentMultiSelections.push(selectedIndex);
+                element.classList.add('selected-option');
+            }
+        }
+    }
+
+    function processSingleChoice(selectedIndex, element, q) {
+        const allOptions = document.querySelectorAll('.option');
+        allOptions.forEach(opt => opt.classList.add('disabled'));
+        
+        const isCorrect = (selectedIndex === q.answer);
+        
+        saveResult(q.id, isCorrect);
+        sessionAnswers[q.id] = { selected: selectedIndex, isCorrect: isCorrect };
+        
+        if (isCorrect) {
+            element.classList.add('correct-answer');
+            showExplanation(q, true);
+            updateStats(); // 触发顶部正确率更新
+            setTimeout(() => { goNext(); }, 1200);
+        } else {
+            element.classList.add('wrong-answer');
+            allOptions[q.answer].classList.add('correct-answer'); 
+            showExplanation(q, false);
+            updateStats(); // 触发顶部正确率更新
+            document.getElementById('next-btn').style.display = "block";
+        }
+    }
+
+    function submitMultiChoice() {
+        if (currentMultiSelections.length === 0) return; 
+
+        const q = currentQuizList[currentQIndex];
+        const allOptions = document.querySelectorAll('.option');
+        allOptions.forEach(opt => opt.classList.add('disabled'));
+        document.getElementById('submit-btn').style.display = "none";
+
+        const sortedSelected = [...currentMultiSelections].sort((a,b)=>a-b);
+        const sortedAnswer = [...q.answer].sort((a,b)=>a-b);
+        const isCorrect = JSON.stringify(sortedSelected) === JSON.stringify(sortedAnswer);
+
+        saveResult(q.id, isCorrect);
+        sessionAnswers[q.id] = { selected: sortedSelected, isCorrect: isCorrect };
+
+        allOptions.forEach((opt, index) => {
+            opt.classList.remove('selected-option');
+            const isSelected = sortedSelected.includes(index);
+            const isRightAns = q.answer.includes(index);
+
+            if (isSelected && isRightAns) opt.classList.add('correct-answer'); 
+            else if (isSelected && !isRightAns) opt.classList.add('wrong-answer'); 
+            else if (!isSelected && isRightAns) opt.classList.add('correct-answer'); 
+        });
+
+        showExplanation(q, isCorrect);
+        updateStats(); // 触发顶部正确率更新
+
+        if (isCorrect) {
+            setTimeout(() => { goNext(); }, 1200);
+        } else {
+            document.getElementById('next-btn').style.display = "block";
+        }
+    }
+
+    function renderSessionOption(div, index, q) {
+        const session = sessionAnswers[q.id];
+        if (q.type === "多选") {
+            const isSelected = session.selected.includes(index);
+            const isRightAns = q.answer.includes(index);
+            if (isSelected && isRightAns) div.classList.add('correct-answer');
+            else if (isSelected && !isRightAns) div.classList.add('wrong-answer');
+            else if (!isSelected && isRightAns) div.classList.add('correct-answer');
+        } else {
+            if (index === q.answer) div.classList.add('correct-answer'); 
+            if (index === session.selected && !session.isCorrect) div.classList.add('wrong-answer'); 
+        }
+    }
+
+    function showExplanation(q, isCorrect) {
+        const expBox = document.getElementById('explanation-box');
+        const stats = userHistory[q.id] || { consecutiveCorrect: 0, totalCorrect: 0, totalError: 0 };
+        
+        let standardAnsText = "";
+        if (q.type === "多选") {
+            standardAnsText = q.answer.map(i => q.options[i]).join('<br>');
+        } else {
+            standardAnsText = q.options[q.answer];
+        }
+
+        const statsHtml = `
+            <div style="margin-top: 15px; font-size: 13px; color: #888; border-top: 1px dashed #ccc; padding-top: 12px; display: flex; gap: 15px; align-items: center;">
+                <span style="color: ${stats.consecutiveCorrect >= 3 ? '#82C99D' : '#D68787'}; font-weight: bold;">
+                    连对: ${stats.consecutiveCorrect}/3
+                </span>
+                <span>总对: ${stats.totalCorrect}</span>
+                <span>总错: ${stats.totalError}</span>
+            </div>
+        `;
+        
+        if (isCorrect) {
+            expBox.innerHTML = `<strong>正向表扬！回答正确。</strong>${statsHtml}`;
+            expBox.style.borderLeftColor = "#82C99D"; 
+        } else {
+            expBox.innerHTML = `<strong>回答错误。</strong><br><br>标准答案：<br>${standardAnsText}${statsHtml}`;
+            expBox.style.borderLeftColor = "#D68787"; 
+        }
+        expBox.style.display = "block";
+    }
+
+    function goNext() { if (currentQIndex < currentQuizList.length) { currentQIndex++; renderQuestion(); } }
+    function goPrev() { if (currentQIndex > 0) { currentQIndex--; renderQuestion(); } }
+    function goHome() { renderDashboard(); }
+
+    window.onload = function() { renderDashboard(); };
+</script>
+</body>
+</html>
